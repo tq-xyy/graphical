@@ -1,0 +1,122 @@
+{
+    "正方形面积": {
+        "name": "square_area",
+        "formula": "a*a",
+        "args": {
+            "a": "a"
+        }
+    },
+    "正方形周长": {
+        "name": "square_perimeter",
+        "formula": "a*4",
+        "args": {
+            "a": "a"
+        }
+    },
+    "长方形面积": {
+        "name": "rectangle_area",
+        "formula": "a*b",
+        "args": {
+            "a": "a",
+            "b": "b"
+        }
+    },
+    "长方形周长": {
+        "name": "rectangle_perimeter",
+        "formula": "(a+b)*2",
+        "args": {
+            "a": "a",
+            "b": "b"
+        }
+    },
+    "三角形面积": {
+        "name": "triangle_area",
+        "formula": "a*h/2",
+        "args": {
+            "a": "a",
+            "h": "h"
+        }
+    },
+    "梯形面积": {
+        "name": "trapezoid_area",
+        "formula": "(a+b)*h/2",
+        "args": {
+            "a": "a",
+            "b": "b",
+            "h": "h"
+        }
+    },
+    "平行四边形面积": {
+        "name": "parallelogram_area",
+        "formula": "a*h",
+        "args": {
+            "a": "a",
+            "h": "h"
+        }
+    },
+    "平行四边形周长": {
+        "name": "parallelogram_perimeter",
+        "formula": "(a+h)*2",
+        "args": {
+            "a": "a",
+            "h": "h"
+        }
+    },
+    "正方体表面积": {
+        "name": "cube_surface_area",
+        "formula": "a*a*6",
+        "args": {
+            "a": "a"
+        }
+    },
+    "正方体体积": {
+        "name": "cube_volume",
+        "formula": "a*a*a",
+        "args": {
+            "a": "a"
+        }
+    },
+    "正方体棱长总和": {
+        "name": "sum_of_cube_edges",
+        "formula": "a*12",
+        "args": {
+            "a": "a"
+        }
+    },
+    "长方体表面积": {
+        "name": "cuboid_surface_area",
+        "formula": "(a*b+a*h+b*h)*2",
+        "args": {
+            "a": "a",
+            "b": "b",
+            "h": "h"
+        }
+    },
+    "长方体体积": {
+        "name": "cuboid_volume",
+        "formula": "a*b*h",
+        "args": {
+            "a": "a",
+            "b": "b",
+            "h": "h"
+        }
+    },
+    "长方体棱长总和": {
+        "name": "sum_of_cuboid_edges",
+        "formula": "(a+b+h)*4",
+        "args": {
+            "a": "a",
+            "b": "b",
+            "h": "h"
+        }
+    },
+    "营销号生成器": {
+        "name": "Marketing",
+        "formula": "ki是怎么回事呢？k相信大家都很熟悉了，但是ki是怎么回事呢？下面就让小编大家一起带大家了解一下吧。ki，其实就是a。大家可能会惊讶k怎么会i呢？但事实就是这样，小编也感到非常惊讶。这就是关于ki的事情了，大家有什么想法呢，欢迎在评论区告诉小编一起讨论哦！",
+        "args": {
+            "keyword": "k",
+            "incident": "i",
+            "another": "a"
+        }
+    }
+}

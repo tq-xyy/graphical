@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
+Graphical
+~~~~~~~~~~~~
+快速的创建和使用图形公式
+
 这是一个可以自由创建公式的模块
 支持以下功能：
 1、支持公式参数
@@ -66,12 +70,13 @@ import sys  # 系统调用
 import unittest  # 单元参数
 from cmd import Cmd  # 交互式命令行框架
 from collections.abc import Iterable  # 导入迭代器基类
-from ctypes import WinDLL  # 用于加载dll
 from decimal import Decimal  # 精确的浮点数
 from enum import Enum, unique  # 枚举
 from json import dumps, loads  # json支持
 from subprocess import call  # 执行命令
 
+if sys.platform == 'win32':    #判断是否是Windows系统
+    from ctypes import WinDLL  # 用于加载dll
 
 __all__ = [    #模块接口列表
     'compute',
@@ -154,6 +159,9 @@ def compute(equation,c_extend=True,**kwargs):
         #主要是c的缺陷
         return eval(equation,kwargs,{})
     
+    if sys.platform != 'win32':
+        c_extend = False
+
     if c_extend:
         class eval_visit(ast.NodeVisitor):
             """遍历源码树"""
@@ -176,7 +184,7 @@ def compute(equation,c_extend=True,**kwargs):
                 self.generic_visit(node)    #处理后续工作
                 return node
 
-                    
+                 
         source = ast.parse(equation)    #解析代码，生成抽象语法树
         code = eval_visit()    #初始化遍历对象
         code.visit(source)    #遍历
@@ -402,34 +410,65 @@ class Integrated_Graphical(object):
     参数:
         **kwargs (dict) 图形的参数
     
-    方法:
-        getresult 获取属性
+    用法:
+        使用Python的注解添加映射
+        注解的格式是:
+            class test:
+                key1 : value1
+                key2 : value2
 
     示例:
 
     class test(Integrated_Graphical):
-        def getresult(self,name):
-            retrun name
-    a = test()
-    a.d  # 'd'
+        d : circle_area
+    a = test(r=1)
+    a.d
 
-    注意: 不应直接创建实例,应继承后实现接口getresult方法"""
+    提示: 注解的用法是标记类型，但Python不会去检查它"""
     def __init__(self,**kwargs):
         """初始化图形"""
         self.kwargs = kwargs    #保存参数
-    
+        self.model = {}    #初始化映射表
+        if getattr(self, '__annotations__', None) is None:    #判断是否有注解
+            self.__annotations__ = {}    #如果没有设定为空值，免得报错
+        for name, func in self.__annotations__.items():    #遍历注解字典
+            #判断是否是公式对象
+            assert issubclass(func, Graphical) ,\
+                '\'%s\' 不是公式对象 (他是 \'%s\')'%(name,func)    #不是报错
+            self.model[name] = func    #将键和值放入映射表
+
     def getresult(self,name):
-        """通过调用这里实现计算
-        应重写此方法"""
+        """这里是为了兼容之前的代码而设置的"""
         #附带参数name为参数名称
+        #通过这里可以更灵活的计算
+        #由于这里被更好用的注解代替
+        #所以这里被用来报错
+        raise AttributeError('\'%s\' object has no attribute \'%s\'' % (self.__class__.__name__, name))
     
-    def __getattr__(self,variable):
+    def __getattr__(self, name):
         """可以用xxx.x的方式获取结果"""
-        return self.getresult(variable)
+        if name in self.model:    #判断目标是否在映射表里
+            func = self.model[name]    #如果在，取出来
+            return func(**self.kwargs)    #计算返回
+        function = getattr(self,'getresult', None)    #获取报错方法
+        return function(name)    #返回，如果重写了这个就不会直接报错
     
     def __call__(self,variable):
         """也可以用xxx("x")的方式获取结果"""
-        return self.__getattr__(variable)
+        if variable in self.model:    #判断函数是否在映射表里
+            func = self.model[variable]    #如果在，获取键值
+            return func(**self.kwargs)    #返回计算结果
+        return self.getresult(variable)    #返回报错函数
+    
+    def __getitem__(self, key):
+        """还可以通过xxx['x']的方法获取结果"""
+        if self.model.get(key, None) is None:    #判断函数是否在映射表里
+            #如果不在
+            return self.getresult()    #返回报错函数
+        else:    #如果在
+            obj = self.model.get(key)    #获取键值
+            return obj(**self.kwargs)._value    #返回计算结果
+
 
 def loadfromJSON(json):
     """
@@ -805,7 +844,7 @@ class Graphical_str_compose(Graphical):
 #在此我想说一句，分数扩展真惨啊~~~
 
 @unique
-class Plugin(Enum):    #扩展开关
+class _Plugin(Enum):    #扩展开关
     #已成为标准选项，故已弃用
     # chinese = True    #中文翻译变量名开关，默认为True，中文好的同学可以改成False
     # str_compose = True    #文章扩展
@@ -813,8 +852,8 @@ class Plugin(Enum):    #扩展开关
     fraction = False    #分数扩展
     
 
-if Plugin:    
-    if Plugin.fraction.value:
+if _Plugin:    
+    if _Plugin.fraction.value:
         """支持分数的扩展"""
         #已知问题：
         #参数可能会替换原公式的分数表达式

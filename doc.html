@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphical: 快速的创建和使用图形公式 Graphical文档</title>
+    <style>
+        * {
+            line-height: 1.6em;
+            margin-left: 1px;
+            color: black;
+        }
+        p {
+            font-size: 16px;
+            margin-left: 3px;
+        }
+        code, pre {
+            padding: 16px;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background-color: #f7f7f7;
+            border-radius: 3px;
+            margin-left: 20px;
+        }
+
+        body {
+            background-color: aliceblue;
+            text-align: left;
+        }
+        article.main {
+            margin-top: 50px;
+            margin-left: 175px;
+            margin-right: 175px;
+            background-color: white;
+            height: 100%;
+        }
+        hr {
+            padding: 1px;
+            background-color: wheat;
+            border: 1px solid white;
+            margin-left: 5px;
+            margin-right: 5px;
+        }
+    </style>
+    <style media="screen and (max-width: 500px;) and (min-width: 0px;)">
+        article.main {
+            width: 100%;
+            margin-left: 0px;
+            margin-right: 0px;
+        }
+    </style>
+</head>
+<body>
+    <article class="main">
+        <h1>Graphical 文档</h1>
+        <hr>
+        <b>欢迎，这里是Graphical的文档</b>
+        <h2 id="h1">功能特性</h2>
+        <ol>
+            <li>支持公式参数</li>
+            <li>支持扩展</li>
+            <li>内置常用图形公式</li>
+            <li>内置中文</li>
+            <li>支持自定义图形</li>
+        </ol>
+        <h2 id="setup">安装 Graphical</h2>
+        <p>这部分文档包含了 Graphical 的安装过程，使用任何软件的第一步就是正确地安装它。</p>
+        <h3>pip install graphical-formula</h3>
+        <p>要安装 Graphical，只要在你的终端中运行这个简单命令即可：</p>
+        <code>pip install graphical-formula</code>
+        <p>如果你没有安装 pip , 可以通过源码安装</p>
+        <h3>获得源码</h3>
+        <p>Graphical 一直在 Github 上积极地开发，你可以一直从这里获取到代码。
+        你可以克隆公共版本库：</p>
+        <code>git clone git://github.com/17097231932/graphical.git</code>
+        <p>
+            获得代码之后，你就可以轻松的将它嵌入到你的 python 包里，或者安装到你的 site-packages:
+        </p>
+        <code>
+            cd graphical
+            &
+            pip install .
+        </code>
+        <h2>快速入门</h2>
+        <p>
+            迫不及待了吗？本页内容为如何入门 Graphical 提供了很好的指引。
+            其假设你已经安装了 Graphical。如果还没有，去<a href="#setup">安装</a>一节看看吧。
+        </p>
+        <p>首先，确认一下：</p>
+        <ul>
+            <li>Graphical 已安装</li>
+            <li>Graphical 是最新的</li>
+        </ul>
+        <p>
+            让我们从一些简单的示例开始吧。
+        </p>
+        <h3>
+            使用内置公式
+        </h3>
+        <p>在 Graphical 中使用公式非常简单</p>
+        <p>一开始要导入 Graphical 模块：</p>
+        <code>import graphical</code>
+        <br>
+        <br>
+        <strong style="color: red;margin-left: 3px;">
+            注意: 它在Python中导入模块名为 graphical
+        </strong>
+        <p>然后, 尝试计算某个图形公式。本例子中，我们来获取正方体的面积</p>
+        <code>figure = graphical.square_area(a=1)</code>
+        <p>
+            现在，我们有一个名为 <var>area</var> 的 <var>square_area</var> 对象，
+            我们可以从这个对象中获取所有我们想要的信息。
+        </p>
+        <p>Graphical 简便的 API 意味着所有 HTTP 请求类型都是显而易见的。</p>
+        <p>例如，你可以这样获取正方体的周长：</p>
+        <code>figure = graphical.square_perimeter(a=1)</code>
+        <p>漂亮，对吧？那么其他图形公式：长方形面积 以及 长方形周长 又是如何的呢？都是一样的简单：</p>
+        <code>figure = graphical.rectangle_area(a=1, b=2)</code>
+        <br>
+        <br>
+        <code>figure = graphical.rectangle_perimeter(a=1, b=2)</code>
+        <p>都很不错吧，但这也仅是 Graphical 的冰山一角呢。</p>
+        <h3>创建并使用自定义公式</h3>
+        <p>Graphical 允许你自定义公式，这非常简单。</p>
+        <p>第一步，定义一个继承 graphical.Graphical 的类</p>
+        <code>class MyFigure(graphical.Graphical):</code>
+        <p>第二步，添加formula属性，值为公式字符串</p>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;formula = 'a+a'</code>
+        <p>第三步，添加args属性，值为描述这个公式的参数的列表， parameter 函数可以帮我们快速生成它</p>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;args = parameter('a')</code>
+        <p>好了，我们定义了一个公式，这个公式是 a+a ,参数是 a 。现在让我们调用它吧！</p>
+        <code>figure = MyFigure(a=1)</code>
+        <p>打印他，结果是2，一个简单的公式就定义好了，多简单啊！</p>
+    </article>
+</body>
+</html>

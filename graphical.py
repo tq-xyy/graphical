@@ -73,7 +73,6 @@ from collections.abc import Iterable  # 导入迭代器基类
 from decimal import Decimal  # 精确的浮点数
 from enum import Enum, unique  # 枚举
 from json import dumps, loads  # json支持
-from subprocess import call  # 执行命令
 
 if sys.platform == 'win32':    #判断是否是Windows系统
     from ctypes import WinDLL  # 用于加载dll
@@ -843,7 +842,7 @@ class Graphical_str_compose(Graphical):
 
 #在此我想说一句，分数扩展真惨啊~~~
 
-@unique
+
 class _Plugin(Enum):    #扩展开关
     #已成为标准选项，故已弃用
     # chinese = True    #中文翻译变量名开关，默认为True，中文好的同学可以改成False
@@ -1091,7 +1090,7 @@ def _test(old_test=False):
         Circle_AreaTest,
         MarketingTest
     ]
-
+    
     if old_test:    #旧的测试
         print("---测试---")
         a = square(a=1)
@@ -1157,6 +1156,7 @@ def _test(old_test=False):
         for test in tests_list:
             itersuite = unittest.TestLoader().loadTestsFromTestCase(test)    #加载测试
             runner.run(itersuite)    #运行测试
+
 #sys.exit(_test())
 
 #段子
@@ -1510,10 +1510,6 @@ class shell(Cmd):
     def parse(self,args):
         """解析参数"""
         return args.split(" ")
-    
-    def do_command(self,args):
-        """执行命令行命令"""
-        call(args, shell=True)
 
 def _run_shell():
     """启动交互式shell"""
@@ -1620,4 +1616,4 @@ if __name__ == "__main__":
 
     main()
     main.command()
-#call(sys.argv[0] + " 17 keyword 李琰 incident 睡觉 another 他困啦",shell=True)
+#os.system(sys.argv[0] + " 17 keyword 李琰 incident 睡觉 another 他困啦")

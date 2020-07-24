@@ -69,7 +69,6 @@ import re  # 正则表达式
 import sys  # 系统调用
 import unittest  # 单元参数
 from cmd import Cmd  # 交互式命令行框架
-from collections.abc import Iterable  # 导入迭代器基类
 from decimal import Decimal  # 精确的浮点数
 from enum import Enum, unique  # 枚举
 from json import dumps, loads  # json支持
@@ -262,7 +261,7 @@ class Graphical_metaclass(type):
 
         if has_extension:    #处理扩展参数
             #导入迭代器的基类对象做判断
-            if isinstance(_extension,Iterable):    #判断是否是一个可迭代对象
+            if hasattr(_extension, '__iter__'):    #判断是否是一个可迭代对象
                 #如果是，迭代出扩展对象
                 temp = {}
                 for extend in _extension:

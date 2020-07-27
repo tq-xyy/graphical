@@ -67,7 +67,6 @@ import ast  # 用于解析抽象语法树
 import fractions  # 用于分数支持
 import re  # 正则表达式
 import sys  # 系统调用
-import unittest  # 单元参数
 from cmd import Cmd  # 交互式命令行框架
 from decimal import Decimal  # 精确的浮点数
 from enum import Enum, unique  # 枚举
@@ -894,12 +893,210 @@ if _Plugin:
                 #无扩展
                 return compute(self.frac.__str__(),Fraction=fractions.Fraction)
             
+class TestCaseMetaclass(type):
+    '''单元测试元类'''
+    def __new__(cls, name, bases, classdict):
+        if name == 'TestCase':    #如果是TestCase本身
+            return type.__new__(cls, name, bases, classdict)    #直接返回
+        _tests_list = []    #初始化测试列表
+        for attr_name, attr in classdict.items():    #遍历类字典
+            if attr_name.startswith('_') or attr_name.endswith('_'):    #如果是以下划线开头或结尾的
+                continue    #跳过
+            elif attr_name.startswith('test_') and callable(attr):    #如果是以 test_ 开头且可调用的
+                _tests_list.append(attr)    #加入测试函数列表
+        classdict['_tests_list'] = _tests_list    #保存测试函数列表
+        return type.__new__(cls, name, bases, classdict)    #构建类对象，返回
+        
 
+class TestCase(metaclass=TestCaseMetaclass):
+    '''单元测试框架
+    这是一个精简的单元测试的模块
+    使用上和 unittest 模块差不多
+    但比 unittest 简单了不少
+    支持断言、错误分析
+    '''
+    def __init__(self, stream=sys.stdout):
+        '''初始化测试框架
+
+        参数:
+            stream    (object) 指定输出的那个类文件对象，需要有 write 方法
+        '''
+        self.stream = stream    #保存文件流对象
+
+        #初始化添加次数
+        self.oks = 0    #通过次数
+        self.failures = 0    #断言失败次数
+        self.errors = 0    #报错次数
+
+    def _printf(self, *values, sep=' ', end='\n'):
+        '''打印文本到文件对象中， 默认和print没有全部
+        内部方法
+        '''
+        print(*values, sep=sep, end=end, file=self.stream)    #对号入座
+    
+    def assertEqual(self, test_values, real_values):
+        '''断言方法
+        
+        参数:
+            test_values  (Any) 测试中的结果
+            real_values  (Any) 正确的结果
+        
+        返回:
+            如果一致，返回 True
+            否则引发 AssertionError (断言错误) 然后会被捕获
+        
+        注意:
+            虽然将两个参数顺序颠倒不会报错，但强烈不建议这么做，
+            因为会产生语义上的错误
+        '''
+        if test_values == real_values:
+            return True
+        else:
+            raise AssertionError('{} != {}'.format(test_values, real_values))
+    
+    def assertTrue(self, test_values):
+        '''判断是否为 True
+        
+        参数:
+            test_values    (bool) 布尔值
+        
+        这个方法内部使用了 assertEqual
+        '''
+        return self.assertEqual(test_values, True)
+    
+    def assertFalse(self, test_values):
+        '''判断是否为 False
+        
+        参数:
+            test_values    (bool) 布尔值
+        
+        这个方法内部使用了 assertEqual
+        '''
+        return self.assertEqual(test_values, False)
+    
+    class assertError:
+        '''判断是否会引发某个错误
+        
+        参数:
+            error_type    (Exception) 会引发的错误类型
+
+        例子:
+            with self.assertError(KeyError):
+                dict()['apple']
+        
+        返回:
+            如果成功抛出错误，返回 None
+            否则引发 AssertionError 然后被捕获
+        '''
+        
+        def __init__(self, error_type):
+            '''初始化
+            '''
+            self.error_type = error_type    #保存错误类型
+
+        def __enter__(self):
+            '''进入 with 语句
+            '''
+            return TestCase()    #返回 TestCase 实例
+        
+        def __exit__(self, type, value, traceback):
+            '''退出 with 语句'''
+            if type is self.error_type:    #判断异常类型是否一致
+                return True    #是返回 True, 
+                # 表示是这个异常已经成功处理了, 
+                # Python 解释器不会将这个错误打印出来
+            else:    #类型不对或为 None (没有异常)
+                raise AssertionError('{} != {}'.format(type, self.error_type))    #引发 AssertionError 断言异常
+    
+    def __run__(self):
+        '''运行测试'''
+        for test_function in self._tests_list:    #遍历从元类那里得来的函数列表
+            self._func_name = test_function.__name__    #将 _func_name 设为调用函数的名称
+            with self:    #进入上下文管理器
+                test_function(self)    #执行函数
+    
+    def __enter__(self):
+        '''进入 with 语句
+        '''
+        #打印位置信息
+        self._printf(self._func_name,     #函数名称
+            ' (from ',
+            self.__class__.__module__ , '.', self.__class__.__name__,    #模块名字
+            ') ...',
+            sep='', end=''    #打印的参数
+        )
+        #打印出来就像这样 test_value (from __main__.Test) ...
+        return self
+    
+    def __exit__(self, type, value, traceback):
+        '''退出 with 语句'''
+        if type is None:    #如果没有异常
+            self._printf('ok')    #通过
+            self.oks += 1    #将通过计数增加一
+            return False    #返回
+        elif type is AssertionError:    #如果断言失败
+            self._printf('failures')    #断言失败
+            self._printf('Traceback (most recent call last):')    #打印回溯信息
+            self._printf('    Test "%s" in "%s"'%(self._func_name, self.__class__.__name__))    #大概位置
+            self._printf('        ...')    #具体的代码段省略，因为判断位置太复杂了
+            self._printf('AssertionError:', value)    #错误类型
+            self._printf()    #空行
+            self.failures += 1    #将断言失败次数增加一
+            return True    #已处理这个错误
+        else:    #如果错误
+            self._printf('error')    #错误
+            self._printf('Traceback (most recent call last):')    #打印回溯信息
+            self._printf('    Test "%s" in "%s"'%(self._func_name, self.__class__.__name__))    #大概位置
+            self._printf('        ...')    #同上
+            self._printf(type.__name__, ': ', value, sep='')    #打印错误类型
+            self._printf()    #空行
+            self.errors += 1    #将报错计数增加一
+            return True    #同上
+        
+    def __str__(self):
+        '''打印时输出的内容'''
+        string = '<{name} object ok=\'{ok}\' failure=\'{failure}\' error=\'{error}\'>'    #模板字符串
+        return string.format(name=self.__class__.__name__, ok=self.oks, failure=self.failures, error=self.errors)    #填充信息，返回
+    
+    __repr__ = __str__    #用 >>> 输出也和打印时输出的一样
+
+def run_tests(*iterables, file=None):
+    '''批量运行测试
+    
+    参数:
+        *iterables  (list[Testcase]) 一个包含参数对象的列表
+        file  (object) 输出对象，要有 write 方法
+    
+    返回:
+        一个三元组, 为 (通过次数, 断言失败次数, 报错次数)'''
+    if file is None:    #判断输出对象是否有指定
+        file = sys.stdout    #没有就指定为标准输出
+    #初始化状态次数
+    ok = 0    #通过次数
+    failure = 0    #断言失败次数
+    error = 0    #报错次数
+    for iterable in iterables:    #遍历测试列表
+        #判断是否是测试用例
+        assert issubclass(iterable, TestCase), \
+            '\'%s\' is not a test case.'%iterable.__name__    #不是报错
+        test = iterable(stream=file)    #初始化测试对象
+        test.__run__()    #运行测试
+
+        #统计状态次数
+        ok += test.oks
+        failure += test.failures
+        error += test.errors
+    
+    file.write('-' * 40)    #分割线
+    file.write('\nFinish %s Test.\n'%len(iterables))    #结束语
+    file.write('Result(ok={ok}, failure={failure}, error={error})\n'.format(ok=ok, failure=failure, error=error))    #状态信息
+    return ok, failure, error    #返回
 
 def _test(old_test=False):
-    """测试"""
-    class Square_AreaTest(unittest.TestCase):    #正方形面积类测试
-        def test_value(self):    #测试输出
+    """测试"""            
+
+    class Square_AreaTest(TestCase):    #正方形面积类测试
+        def test_output(self):    #测试输出
             test1 = square_area(a=2)
             self.assertEqual(test1._value, 4)    #测试用例1  
             test2 = square_area(a=3)
@@ -908,8 +1105,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 16)    #测试用例3  
 
 
-    class Square_PerimeterTest(unittest.TestCase):    #正方形周长类测试
-        def test_value(self):    #测试输出
+    class Square_PerimeterTest(TestCase):    #正方形周长类测试
+        def test_output(self):    #测试输出
             test1 = square_perimeter(a=2)
             self.assertEqual(test1._value, 8)    #测试用例1
             test2 = square_perimeter(a=3)
@@ -918,8 +1115,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 16)    #测试用例3
 
 
-    class Rectangle_AreaTest(unittest.TestCase):    #长方形面积类测试
-        def test_value(self):    #测试输出
+    class Rectangle_AreaTest(TestCase):    #长方形面积类测试
+        def test_output(self):    #测试输出
             test1 = rectangle_area(a=2, b=3)
             self.assertEqual(test1._value, 6)    #测试用例1
             test2 = rectangle_area(a=3, b=5)
@@ -928,8 +1125,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 56)    #测试用例3
 
 
-    class Rectangle_PerimeterTest(unittest.TestCase):    #长方形周长类测试
-        def test_value(self):    #测试输出
+    class Rectangle_PerimeterTest(TestCase):    #长方形周长类测试
+        def test_output(self):    #测试输出
             test1 = rectangle_perimeter(a=2, b=3)
             self.assertEqual(test1._value, 10)    #测试用例1
             test2 = rectangle_perimeter(a=2, b=5)
@@ -938,8 +1135,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 30)    #测试用例3
 
 
-    class Triangle_AreaTest(unittest.TestCase):    #三角形面积类测试
-        def test_value(self):    #测试输出
+    class Triangle_AreaTest(TestCase):    #三角形面积类测试
+        def test_output(self):    #测试输出
             test1 = triangle_area(a=2, h=3)
             self.assertEqual(test1._value, 3.0)    #测试用例1
             test2 = triangle_area(a=3, h=4)
@@ -948,8 +1145,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 25.0)    #测试用例3
 
 
-    class Trapezoid_AreaTest(unittest.TestCase):    #梯形面积类测试
-        def test_value(self):    #测试输出
+    class Trapezoid_AreaTest(TestCase):    #梯形面积类测试
+        def test_output(self):    #测试输出
             test1 = trapezoid_area(a=2, b=3 ,h=4)
             self.assertEqual(test1._value, 10.0)    #测试用例1
             test2 = trapezoid_area(a=1, b=1, h=1)
@@ -958,8 +1155,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 450.0)    #测试用例3
 
 
-    class Parallelogram_AreaTest(unittest.TestCase):    #平行四边形面积类测试
-        def test_value(self):    #测试输出
+    class Parallelogram_AreaTest(TestCase):    #平行四边形面积类测试
+        def test_output(self):    #测试输出
             test1 = parallelogram_area(a=2, h=3)
             self.assertEqual(test1._value, 6)    #测试用例1
             test2 = parallelogram_area(a=3, h=4)
@@ -968,8 +1165,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 20)    #测试用例3
 
 
-    class Parallelogram_PerimeterTest(unittest.TestCase):    #平行四边形周长类测试
-        def test_value(self):    #测试输出
+    class Parallelogram_PerimeterTest(TestCase):    #平行四边形周长类测试
+        def test_output(self):    #测试输出
             test1 = parallelogram_perimeter(a=1, h=2)
             self.assertEqual(test1._value, 6)    #测试用例1
             test2 = parallelogram_perimeter(a=2, h=3)
@@ -978,8 +1175,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 14)    #测试用例3
 
 
-    class Cube_Surface_AreaTest(unittest.TestCase):    #正方体表面积类测试
-        def test_value(self):    #测试输出
+    class Cube_Surface_AreaTest(TestCase):    #正方体表面积类测试
+        def test_output(self):    #测试输出
             test1 = cube_surface_area(a=6)
             self.assertEqual(test1._value, 216)    #测试用例1
             test2 = cube_surface_area(a=4)
@@ -988,8 +1185,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 24)    #测试用例3
 
 
-    class Cube_VolumeTest(unittest.TestCase):    #正方体体积类测试
-        def test_value(self):    #测试输出
+    class Cube_VolumeTest(TestCase):    #正方体体积类测试
+        def test_output(self):    #测试输出
             test1 = cube_volume(a=6)
             self.assertEqual(test1._value, 216)    #测试用例1
             test2 = cube_volume(a=4)
@@ -998,8 +1195,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 8)    #测试用例3
 
 
-    class Sum_Of_Cube_EdgesTest(unittest.TestCase):    #正方体棱长总和类测试
-        def test_value(self):    #测试输出
+    class Sum_Of_Cube_EdgesTest(TestCase):    #正方体棱长总和类测试
+        def test_output(self):    #测试输出
             test1 = sum_of_cube_edges(a=6)
             self.assertEqual(test1._value, 72)    #测试用例1
             test2 = sum_of_cube_edges(a=4)
@@ -1008,8 +1205,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 24)    #测试用例3
 
 
-    class Cuboid_Surface_AreaTest(unittest.TestCase):    #长方体表面积类测试
-        def test_value(self):    #测试输出
+    class Cuboid_Surface_AreaTest(TestCase):    #长方体表面积类测试
+        def test_output(self):    #测试输出
             test1 = cuboid_surface_area(a=2, b=3, h=4)
             self.assertEqual(test1._value, 52)    #测试用例1
             test2 = cuboid_surface_area(a=3, b=4, h=5)
@@ -1018,8 +1215,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 2200)    #测试用例3
 
 
-    class Cuboid_VolumeTest(unittest.TestCase):    #长方体体积类测试
-        def test_value(self):    #测试输出
+    class Cuboid_VolumeTest(TestCase):    #长方体体积类测试
+        def test_output(self):    #测试输出
             test1 = cuboid_volume(a=1, b=2, h=3)
             self.assertEqual(test1._value, 6)    #测试用例1
             test2 = cuboid_volume(a=2, b=3, h=4)
@@ -1028,8 +1225,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 6000)    #测试用例3
 
 
-    class Sum_Of_Cuboid_EdgesTest(unittest.TestCase):    #长方体棱长总和类测试
-        def test_value(self):    #测试输出
+    class Sum_Of_Cuboid_EdgesTest(TestCase):    #长方体棱长总和类测试
+        def test_output(self):    #测试输出
             test1 = sum_of_cuboid_edges(a=2, b=3, h=4)
             self.assertEqual(test1._value, 36)    #测试用例1
             test2 = sum_of_cuboid_edges(a=3, b=4, h=5)
@@ -1038,8 +1235,8 @@ def _test(old_test=False):
             self.assertEqual(test3._value, 240)    #测试用例3
 
 
-    class Circle_PerimeterTest(unittest.TestCase):    #圆形周长类测试
-        def test_value(self):    #测试输出
+    class Circle_PerimeterTest(TestCase):    #圆形周长类测试
+        def test_output(self):    #测试输出
             de_decimal = lambda decimal_object: float(str(decimal_object))
             test1 = circle_perimeter(r=1)
             self.assertEqual(de_decimal(test1._value), 6.28)    #测试用例1
@@ -1049,8 +1246,8 @@ def _test(old_test=False):
             self.assertEqual(de_decimal(test3._value), 18.84)    #测试用例3
 
 
-    class Circle_AreaTest(unittest.TestCase):    #圆形面积类测试
-        def test_value(self):    #测试输出
+    class Circle_AreaTest(TestCase):    #圆形面积类测试
+        def test_output(self):    #测试输出
             de_decimal = lambda decimal_object: float(str(decimal_object))
             test1 = circle_area(r=1)
             self.assertEqual(de_decimal(test1._value), 3.14)    #测试用例1
@@ -1060,8 +1257,8 @@ def _test(old_test=False):
             self.assertEqual(de_decimal(test3._value), 28.26)    #测试用例3
 
 
-    class MarketingTest(unittest.TestCase):    #营销号生成器类测试
-        def test_value(self):    #测试输出
+    class MarketingTest(TestCase):    #营销号生成器类测试
+        def test_output(self):    #测试输出
             result = '{k}{i}是怎么回事呢？{k}相信大家都很熟悉了，但是{k}{i}是怎么回事呢？下面就让小编大家一起带大家了解一下吧。{k}{i}，其实就是{a}。大家可能会惊讶{k}怎么会{i}呢？但事实就是这样，小编也感到非常惊讶。这就是关于{k}{i}的事情了，大家有什么想法呢，欢迎在评论区告诉小编一起讨论哦！'
             test1 = Marketing(keyword="我",incident="睡觉",another="我困啦")
             self.assertEqual(test1(), result.format(k="我",i="睡觉",a="我困啦"))    #测试用例1
@@ -1151,10 +1348,7 @@ def _test(old_test=False):
         print(a(a=3))
         print(Marketing(keyword="李琰",incident="睡觉",another="它困啦"))
     else:
-        runner = unittest.TextTestRunner(stream=sys.stdout)    #配置启动器
-        for test in tests_list:
-            itersuite = unittest.TestLoader().loadTestsFromTestCase(test)    #加载测试
-            runner.run(itersuite)    #运行测试
+        run_tests(*tests_list)
 
 #sys.exit(_test())
 

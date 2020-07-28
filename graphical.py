@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-Graphical
-~~~~~~~~~~~~
-快速的创建和使用图形公式
+    Graphical
+    ~~~~~~~~~~~~
+    快速的创建和使用图形公式
 
 这是一个可以自由创建公式的模块
 支持以下功能：
@@ -67,7 +67,6 @@ import ast  # 用于解析抽象语法树
 import fractions  # 用于分数支持
 import re  # 正则表达式
 import sys  # 系统调用
-from cmd import Cmd  # 交互式命令行框架
 from decimal import Decimal  # 精确的浮点数
 from enum import Enum, unique  # 枚举
 from json import dumps, loads  # json支持
@@ -1474,9 +1473,8 @@ formula_name = [    #公式的名称
     "圆形面积",
     "营销号生成器"
 ]
+
 #这里是与用户交互的部分
-
-
 
 #这是可复用部分
 class printlist_metaclass(type):
@@ -1658,19 +1656,190 @@ def _tkinter_main():
 
 
 #命令行交互界面
-#导入cmd模块的Cmd类
+
+#这里使用了自己的命令行框架
+#其实有一个标准库 cmd 就是一个命令行框架
+#但是我想自己定义输出
+#所以写了一个类似的框架
+
+class Cmd(object):
+    '''用于编写面向行的命令解释器的简单框架
+
+    这是一个简单的命令行交互框架，
+    用于编写一些声明式的程序
+    '''
+
+    #一些配置
+    headers = ''    #头部信息
+    prompt = '(Cmd) '    #提示符
+
+    #代码部分
+    def __init__(self, stdin=None, stdout=None, stderr=None):
+        '''初始化框架
+        
+        参数:
+            stdin  (like-file) 从某个文件获取输入
+            stdout (like-file) 输出到某个文件
+            stderr (like-file) 异常输出到文件中
+        
+        注意:
+            如果你没有听说过 一切皆文件 的概念，请不要指定上面三个参数
+        '''
+        if stdin is None:    #判断 stdin 是否为空
+            self.stdin = sys.stdin    #是，指定为标准输入
+        else:    #否则，
+            self.stdin = stdin    #保存参数
+        
+        if stdout is None:    #判断 stdout 是否为空
+            self.stdout = sys.stdout    #是，指定为标准输出
+        else:    #否则，
+            self.stdout = stdout    #保存参数
+        
+        if stderr is None:    #判断 stderr 是否为空
+            self.stderr = sys.stderr    #是，指定为标准异常输出
+        else:    #否则，
+            self.stderr = stderr    #保存参数
+        
+        self.history = []    #初始化历史命令列表
+        
+    def preloop(self):
+        '''开始事件循环前的回调函数
+        '''
+        pass
+
+    def stoploop(self):
+        '''结束事件循环后的回调函数
+        '''
+        pass
+
+    def precmd(self, line):
+        '''开始解析命令前的回调函数
+        '''
+        return line    #一定要返回
+    
+    def postcmd(self):
+        '''结束执行命令后的回调函数
+        '''
+        pass
+
+    def emptyline(self):
+        '''输入是空行的回调函数
+        '''
+        pass
+
+    def _parse_cmd(self, line):
+        '''解析命令行
+        '''
+        #分词
+        line = line + ' '    #加一个空格
+        result = []    #初始化结果
+        chars = ''    #初始化临时字符串
+        for char in line:    #遍历输入的每个字符
+            if char == ' ' and chars == '':    #遇到空格和临时字符串是空
+                continue    #跳过
+            elif char == ' ' and chars != '':    #遇到空格和临时字符串有东西
+                result.append(chars)    #将临时字符串加入结果
+                chars = ''    #清空临时字符串
+            else:    #否则
+                #这会匹配普通字符
+                chars = chars + char    #加到临时字符串
+        if len(result) == 0:   #如果结果字符串是空列表
+            return None    #返回 空(None)
+        #否则
+        return result    #返回结果
+    
+    def onecmd(self, arg):
+        '''执行命令
+        '''
+        execute = arg[0]    #命令名称
+        execute = 'do_' + execute    #加上 do_ 前缀就是方法名
+        args = arg[slice(1, len(arg))]   #参数
+        function = getattr(self, execute, self.unknown_command)    #获取函数方法
+        #默认是 unknown_command 方法
+        if function == self.unknown_command:    #如果是 unknown_command 方法
+            return function(execute)    #传入名称
+        else:    #是普通方法
+            return function(*args)   #执行命令
+    
+    def unknown_command(self, execute):
+        '''未知命令
+        '''
+        print('unknown command \'%s\''%execute[8:], file=self.stderr)    #打印一条信息
+
+    
+    def do_help(self, *args):
+        '''显示帮助
+        '''
+        if not args:    #如果没有参数
+            #就打印全部方法
+            if self.__doc__ is not None:    #如果有类文档
+                print(self.__doc__, file=self.stdout)    #打印类文档
+            print(file=self.stdout)    #空行
+            for k, v in self.__class__.__dict__.items():    #遍历方法字典
+                if k.startswith('do_'):    #如果开头是 do_
+                    #就是命令方法
+                    print(k[8:], '\t', end='', file=self.stdout)    #打印名称 + 一个制表符
+                    if v.__doc__ is not None:    #如果函数有文档
+                        print(v.__doc__, end='', file=self.stdout)    #打印函数文档
+                    print(file=self.stdout)    #空行
+        else:    #有参数
+            #打印指定的目录
+            for arg in args:   #遍历参数
+                if hasattr(self, 'do_' + arg):    #如果有这个方法
+                    print(arg, end='\t', file=self.stdout)   #打印名称 + 一个制表符
+                    doc = getattr(self, 'do_'+arg).__doc__    #获取文档
+                    if doc:    #如果文档不是空
+                        print(doc, file=self.stdout)    #打印文档
+                else:    #否则
+                    #输入的命令不存在
+                    print('没有这个命令 \'%s\''%args, file=self.stdout)    #打印一条信息
+
+    def mainloop(self):
+        '''启动事件循环
+        '''
+        try:    #进入
+            self.preloop()    #执行回调函数
+            print(self.headers, file=self.stdout)
+            while True:
+                line = input(self.prompt)   #获取输入
+                line = self.precmd(line)    #执行回调函数
+                if not line:    #如果是空行
+                    self.emptyline()    #执行回调函数
+                    continue    #跳过
+                else:    #否则
+                    #去掉前面和后面的空格
+                    line = line.strip(' ')    #清理
+                arg = self._parse_cmd(line)    #预处理命令，分词
+                if arg is None:    #如果分词后是空
+                    continue    #跳过
+                output = self.onecmd(arg)    #执行命令
+                self.postcmd()    #执行回调函数
+                if output is True:    #如果函数返回的是 True
+                    break    #跳过
+                self.stdout.write('\n')    #空行
+                self.stdout.flush()    #刷新
+                #下一轮循环
+        except KeyboardInterrupt:    #如果遇到 KeyboardInterrupt
+            #也就是按下 Ctrl+C
+            pass   #退出
+        finally:    #结束
+            self.stoploop()    #执行回调函数
 
 class shell(Cmd):
-    """命令行交互界面"""
+    '''命令行交互界面
+    '''
+
+    headers = 'Graphical Shell'
     prompt = "Graphical> "    #提示符
 
-    def do_list(self,arg):
-        """打印id"""
+    def do_list(self, *arg):
+        '''打印id
+        '''
         _print_id_key()
     
-    def do_compute(self,arg):
-        """计算"""
-        arg = self.parse(arg)
+    def do_compute(self, *arg):
+        '''计算
+        '''
         compute_id = int(arg[0])    #获取图形id
         compute_args = arg[1:]    #获取参数
         if len(compute_args) % 2 != 0:    #如果参数的个数不是2的倍数
@@ -1685,20 +1854,25 @@ class shell(Cmd):
         except IndexError:
             raise IndexError("不是有效的图形")    #如果超出索引，报错
         
-    def do_exit(self,arg):
-        """退出"""
-        return True    #按照和cmd模块的小约定，如果返回True就退出
+    def do_exit(self, *arg):
+        '''退出
+        '''
+        print('bye')   #打印一条信息
+        return True    #按照和Cmd类的小约定，如果返回True就退出
 
     def emptyline(self):
-        """如果输入空行，调用这个"""
-        sys.stdout.write("\n")    #打印一个空行
+        '''如果输入空行，调用这个
+        '''
+        print()    #打印一个空行
 
-    def default(self,line):
-        """如果无此命令，调用这个"""
+    def unknown_command(self,line):
+        '''如果无此命令，调用这个
+        '''
         print("'%s' 不是有效的命令"%line)
 
-    def do_help(self,arg):
-        """帮助"""
+    def do_help(self, *arg):
+        '''帮助
+        '''
         print(
             """
 命令:
@@ -1710,22 +1884,40 @@ class shell(Cmd):
             compute id key value [arg ...]
             """
         )
-    def parse(self,args):
-        """解析参数"""
-        return args.split(" ")
 
 def _run_shell():
     """启动交互式shell"""
     try:
-        a = shell()
-        a.cmdloop()
-    except KeyboardInterrupt:
-        pass
+        a = shell()    #实例化
+        a.mainloop()    #进入事件循环
+    except KeyboardInterrupt:    #如果遇到 KeyboardInterrupt
+        #也就是按下 Ctrl+C
+        pass    #跳过
+
+#命令行帮助
+HELP = '''
+选项: graphical [-h] [-t | -s | -g | -j | -ot] [-l] [id] [(key value) [(key value) ...]]
+
+选项参数:
+  -h, --help       显示帮助并退出
+  -t, --test       开始测试
+  -s, --shell      启动交互式Shell
+  -g, --gui        打开图形界面
+  -j, --json       将内置公式导出到JSON
+  -ot, --old-test  开始旧的测试
+
+  -l, --list       列出所有可用的图形公式
+  id               图形ID
+  arg              计算图形公式 格式：**参数
+'''
 
 def _command(arg):
     """命令行参数开关"""
-    #这里使用python标准库argparse
-    parse = argparse.ArgumentParser(description="图形",prog="graphical")    #生成ArgumentParser对象
+
+    #这里使用 Python 标准库 argparse
+    parse = argparse.ArgumentParser(description="图形", prog="graphical", add_help=False)    #生成ArgumentParser对象
+
+    parse.add_argument('-h', '--help',action='store_true', help='显示帮助并退出')    #添加帮助
 
     option = parse.add_mutually_exclusive_group()
     option.add_argument("-t","--test",action="store_true",help="开始测试")
@@ -1738,23 +1930,39 @@ def _command(arg):
     group.add_argument("-l","--list",help="列出所有可用的图形公式",action="store_true") #添加list参数
     group.add_argument("id",help="图形ID",type=int,nargs="?",default=1)    #添加图形参数
     group.add_argument("arg",help="计算图形公式 格式：**参数",nargs="*")    #添加图形公式的参数
-    parse_args = parse.parse_args(arg)    #解析参数
-    if parse_args.shell:    #启动shell
-        return main.shell()
-    elif parse_args.test:
-        return main.test()
-    elif parse_args.gui:
-        return main.gui()
-    elif parse_args.json:
-        json_str = _builtin_formula_to_json()
-        with open("graphical.json",'w',encoding="utf-8") as json_file:
-            json_file.write(json_str)
-        return json_str
-    elif parse_args.old_test:
-        return _test(old_test=True)
 
-    if parse_args.list:    #开关list
+    parse_args = parse.parse_args(arg)    #解析参数
+
+    if parse_args.help:
+        #打印帮助
+        print(HELP)    #打印
+
+    elif parse_args.shell:    
+        #启动shell
+        return main.shell()    #从入口点启动
+    
+    elif parse_args.test:
+        #单元测试
+        return main.test()    #从入口点启动
+    
+    elif parse_args.gui:
+        #图形界面
+        return main.gui()    #从入口点启动
+    
+    elif parse_args.json:
+        json_str = _builtin_formula_to_json()    #获取JSON字符串
+        with open("graphical.json",'w',encoding="utf-8") as json_file:    #打开文件
+            json_file.write(json_str)    #写入文件
+        return json_str    #结束
+    
+    elif parse_args.old_test:    
+        #老的测试模块
+        return _test(old_test=True)    #启动老的测试
+
+    elif parse_args.list:    
+        #图形ID列表
         _print_id_key()    #调用函数打印
+    
     elif parse_args.arg:    #否则计算图形公式
         compute_id = parse_args.id    #获取图形id
         compute_args = vars(parse_args)['arg']    #获取参数
@@ -1771,11 +1979,14 @@ def _command(arg):
             raise IndexError("不是有效的图形")    #如果超出索引，报错
 
 class main(object):
+    '''程序入口点
+    '''
     def __init__(self):
         self.args = sys.argv    #保存变量
 
     def _parse(self):
-        """解析参数列表"""
+        '''解析参数列表
+        '''
         first = True    #初始化
         parameter = []
         for char in self.args:    #循环
@@ -1788,35 +1999,43 @@ class main(object):
     
     @classmethod
     def command(cls):
-        """命令行参数解析"""
+        '''命令行参数解析
+        '''
         return _command(cls()._parse())
     
     @staticmethod
     def gui():
-        """图形用户界面"""
+        '''图形用户界面
+        '''
         try:
             import tkinter    #Tk/Tcl接口
             from tkinter import ttk    #tkinter ttk扩展
-        except ImportError:
-            import warnings
-            warnings.warn("无法导入Tk/Tcl接口，请确保已正确安装tkinter")
+        except ImportError:    #遇到导入错误
+
+            #其实 tkinter 是 Python 的可选标准库
+            #安装时可以取消安装
+            #另外 Python 的 ZIP 发行版是没有 tkinter 的
+
+            import warnings    #导入 warnings 模块
+            warnings.warn("无法导入Tk/Tcl接口，请确保已正确安装tkinter",     #如果你没有安装 Tkinter
+                RuntimeWarning)    #给你个警告
         else:    #如果一切正常
-            globals()['tkinter'] = tkinter
-            globals()['ttk'] = ttk
-            return _tkinter_main()
+            globals()['tkinter'] = tkinter    #将tkinter保存到全局变量
+            globals()['ttk'] = ttk    #将ttk保存到全局变量
+            return _tkinter_main()    #运行入口函数
     
     @staticmethod
     def shell():
-        """命令行交互提示符"""
+        '''命令行交互提示符'''
         return _run_shell()
     
     @staticmethod
     def test():
-        """测试"""
+        '''测试'''
         return _test()
 
 if __name__ == "__main__":
-
     main()
     main.command()
-#os.system(sys.argv[0] + " 17 keyword 李琰 incident 睡觉 another 他困啦")
+
+# os.system(sys.argv[0] + " 17 keyword 李琰 incident 睡觉 another 他困啦")

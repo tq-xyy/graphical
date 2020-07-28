@@ -892,7 +892,13 @@ if _Plugin:
                     return compute(self.frac.__str__(),**self.extension)
                 #无扩展
                 return compute(self.frac.__str__(),Fraction=fractions.Fraction)
-            
+
+# 这里使用的自己的单元测试框架
+# 有人可能会问为什么不用那些成熟的单元测试框架呢
+# 比如 unittest, nose2, ddt, pytest
+# 这里我自己做的是因为我觉得自己的话输出可控一些
+# 也没有那么多依赖项
+
 class TestCaseMetaclass(type):
     '''单元测试元类'''
     def __new__(cls, name, bases, classdict):
@@ -906,7 +912,7 @@ class TestCaseMetaclass(type):
                 _tests_list.append(attr)    #加入测试函数列表
         classdict['_tests_list'] = _tests_list    #保存测试函数列表
         return type.__new__(cls, name, bases, classdict)    #构建类对象，返回
-        
+
 
 class TestCase(metaclass=TestCaseMetaclass):
     '''单元测试框架
@@ -1513,24 +1519,28 @@ class printlist(object,metaclass=printlist_metaclass):
         self.item = list(self.packaging(*self.args))    #打包数据
     
     def packaging(self,*iterables):
-        iterables = [list(iterable) for iterable in iterables]
-        long_list_length = 0
-        for iterable in iterables:
-            if len(iterable) >= long_list_length:
-                long_list_length = len(iterable)
-        result = []
-        for index in range(long_list_length):
-            pack = []
-            for iterable in iterables:
-                try:
+        '''将两个或多个迭代器打包
+        类似于 zip 函数
+        '''
+        iterables = [list(iterable) for iterable in iterables]    #将所有对象都转为列表
+        long_list_length = 0    #初始化最大长度
+        for iterable in iterables:    #迭代迭代器
+            if len(iterable) >= long_list_length:    #如果长度大于最大长度
+                long_list_length = len(iterable)    #将最大长度设为这个列表的长度
+        result = []    #初始化返回结果
+        for index in range(long_list_length):    #重复最大长度次
+            pack = []    #每层的元素列表
+            for iterable in iterables:    #迭代每个列表
+                try:    #获取元素
+                    #获取每个列表的对应的元素
                     value = iterable[index]
-                except IndexError:
-                    value = ''
-                finally:
-                    pack.append(value)
-            pack = tuple(pack)
-            result.append(pack)
-        return result
+                except IndexError:    #如果报错
+                    value = ''    #将内容设为空字符串
+                finally:    #最后
+                    pack.append(value)    #进入元素列表
+            pack = tuple(pack)    #将列表转为元组
+            result.append(pack)    #加入结果列表
+        return result    #返回结果列表
 
 
     def get(self):

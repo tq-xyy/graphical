@@ -202,7 +202,7 @@ def compute(equation,c_extend=True,**kwargs):
             '32':'win32',
             '64':'amd64'
         }
-        dll_name = 'graphical-{bit}.dll'.format(bit=dll_bit_list[bit])
+        dll_name = 'libgraphical.{bit}.dll'.format(bit=dll_bit_list[bit])
         try:
             #导入dll
             dll = WinDLL('.\\' + dll_name)

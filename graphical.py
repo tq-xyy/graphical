@@ -506,6 +506,12 @@ class square(Integrated_Graphical):
     参数:
     a --> 边长
     含有:面积 周长"""
+
+    area: square_area
+    面积: square_area
+    perimeter: square_perimeter
+    周长: square_area
+
     def getresult(self,name):
         if (name == "area" or name == "面积"):
             return square_area(**self.kwargs)
@@ -533,6 +539,12 @@ class rectangle(Integrated_Graphical):
     a --> 长
     b --> 宽
     含有:面积 周长"""
+
+    area: rectangle_area
+    面积: rectangle_area
+    perimeter: rectangle_perimeter
+    周长: rectangle_perimeter
+
     def getresult(self,name):
         if (name == "area" or name == "面积"):
             return rectangle_area(**self.kwargs)
@@ -556,6 +568,10 @@ class triangle(Integrated_Graphical):
     a --> 底
     h --> 高
     含有:面积"""
+
+    area: triangle_area
+    面积: triangle_area
+
     def getresult(self,name):
         if (name == "area" or name == "面积"):
             return triangle_area(**self.kwargs)
@@ -577,6 +593,10 @@ class trapezoid(Integrated_Graphical):
     b --> 下底
     h --> 高
     含有:面积"""
+
+    area: triangle_area
+    面积: triangle_area
+
     def getresult(self,name):
         if (name == "area" or name == "面积"):
             return trapezoid_area(**self.kwargs)
@@ -602,6 +622,12 @@ class parallelogram(Integrated_Graphical):
     a --> 长
     h --> 高
     含有:面积 周长"""
+
+    area: parallelogram_area
+    面积: parallelogram_area
+    perimeter: parallelogram_perimeter
+    周长: parallelogram_perimeter
+
     def getresult(self,name):
         if (name == "area" or name == "面积"):
             return parallelogram_area(**self.kwargs)
@@ -637,6 +663,14 @@ class cuboid(Integrated_Graphical):
     b --> 宽
     h --> 高
     含有:表面积 体积 棱长总和"""
+
+    volume: cuboid_surface_area
+    面积: cuboid_surface_area
+    surface_area: cuboid_surface_area
+    表面积: cuboid_surface_area
+    total_length: sum_of_cuboid_edges
+    棱长总和: sum_of_cuboid_edges
+
     def getresult(self,name):
         if (name == "volume" or name == "体积"):
             return cuboid_volume(**self.kwargs)
@@ -672,6 +706,14 @@ class cube(Integrated_Graphical):
     参数:
     a --> 棱长
     含有:表面积 体积 棱长总和"""
+
+    volume: cube_surface_area
+    面积: cube_surface_area
+    surface_area: cube_surface_area
+    表面积: cube_surface_area
+    total_length: sum_of_cube_edges
+    棱长总和: sum_of_cube_edges
+
     def getresult(self,name):
         if (name == "volume" or name == "体积"):
             return cube_volume(**self.kwargs)
@@ -721,6 +763,9 @@ class circle(Integrated_Graphical):
     含有:周长 面积
     常量:
     pi --> 3.14..."""
+
+    #这里由于使用了惰性求值，所以只能使用 getresult 方法
+    
     @_lazy_property
     def perimeter(self):
         #周长

@@ -1597,7 +1597,7 @@ class printlist(object,metaclass=printlist_metaclass):
         for index in range(len(self.title)*2 - 1):
             try:
                 division.append("--" * len(self.title[index]))
-            except IndexError as identifier:
+            except IndexError:
                 division.append("-----")
         result.append("".join(division))
         #内容
@@ -1641,6 +1641,13 @@ def _print_id_key():
 
 def _tkinter_main():
     """启动窗口"""
+    if 'tkinter' not in globals():
+        tkinter = None
+        ttk = None
+    else:
+        tkinter = globals()['tkinter']
+        ttk = globals()['ttk']
+    
     class window(tkinter.Frame):
         """用户图形界面"""
 

@@ -59,10 +59,6 @@ def loadfromJSON(json: str) -> type: ...
 
 """
 
-formula = None
-args = None
-extension = None
-
 #导入需要的模块
 import argparse  # 用于解析参数
 import ast  # 用于解析抽象语法树
@@ -75,6 +71,10 @@ from json import dumps, loads  # json支持
 
 if sys.platform == 'win32':    #判断是否是Windows系统
     from ctypes import WinDLL  # 用于加载dll
+
+FORMULA = None
+ARGS = None
+EXTENSION = None
 
 __all__ = [    #模块接口列表
     'compute',

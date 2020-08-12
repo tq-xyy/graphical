@@ -66,7 +66,6 @@ import fractions  # 用于分数支持
 import re  # 正则表达式
 import sys  # 系统调用
 from decimal import Decimal  # 精确的浮点数
-from enum import Enum, unique  # 枚举
 from json import dumps, loads  # json支持
 
 if sys.platform == 'win32':    #判断是否是Windows系统
@@ -887,7 +886,7 @@ class Graphical_str_compose(Graphical):
 #在此我想说一句，分数扩展真惨啊~~~
 
 
-class _Plugin(Enum):    #扩展开关
+class _Plugin:    #扩展开关
     #已成为标准选项，故已弃用
     # chinese = True    #中文翻译变量名开关，默认为True，中文好的同学可以改成False
     # str_compose = True    #文章扩展
@@ -896,7 +895,7 @@ class _Plugin(Enum):    #扩展开关
     
 
 if _Plugin:    
-    if _Plugin.fraction.value:
+    if _Plugin.fraction:
         """支持分数的扩展"""
         #已知问题：
         #参数可能会替换原公式的分数表达式
@@ -1420,26 +1419,6 @@ class Marketing(Graphical_str_compose):
     args = parameter(keyword="k",incident="i",another="a")
 
 
-@unique
-class formula_enum(Enum):
-    #公式对应的类
-    正方形面积 = square_area
-    正方形周长 = square_perimeter
-    长方形面积 = rectangle_area
-    长方形周长 = rectangle_perimeter
-    三角形面积 = triangle_area
-    梯形面积 = trapezoid_area
-    平行四边形面积 = parallelogram_area
-    平行四边形周长 = parallelogram_perimeter
-    正方体表面积 = cube_surface_area
-    正方体体积 = cube_volume
-    正方体棱长总和 = sum_of_cube_edges
-    长方体表面积 = cuboid_surface_area
-    长方体体积 = cuboid_volume
-    长方体棱长总和 = sum_of_cuboid_edges
-    圆形周长 = circle_perimeter
-    圆形面积 = circle_area
-    营销号生成器 = Marketing
 
 formula_dict = {
     "正方形面积":square_area,
@@ -1480,6 +1459,185 @@ formula_list = [    #函数列表
     circle_area,
     Marketing
 ]
+
+# 这里自己写了一个枚举的实现
+# 虽然 Python 标准库中有枚举的模块
+# 但我还是想自己写写
+# 这个枚举实现了 enum 标准库的大多数特性
+# 并且接口也相同，所以代码基本不用更改
+
+class _EnumDict(dict):
+    '''枚举的自定义命名空间字典
+    用于实现键不重复'''
+    def __init__(self):
+        '''初始化'''
+        super().__init__()    #调用父类的方法初始化
+        self._member_names = []    #初始化成员名称列表
+
+    def __setitem__(self, key, value):
+        '''类在向属性字典插入选项'''
+        if key in self:    #如果key已经插入了
+            raise TypeError('Attempted to reuse key: %r' % key)    #报错
+        if not (key.startswith('__') and key.endswith('__')):
+            #如果不是双下划线开头和结尾的魔术方法
+            self._member_names.append(key)    #加入成员名称列表
+            #魔术方法不做处理
+        super().__setitem__(key, value)    #调用父类的方法插入属性
+
+class EnumMeta(type):
+    '''枚举的元类
+    是主要功能的实现'''
+    @classmethod
+    def __prepare__(cls, name, bases):
+        '''创建自定义命名空间'''
+        #创建命名空间字典
+        d = _EnumDict()
+        #这里实现了成员名不允许重复
+        return d    #返回
+
+    def __new__(cls, name, bases, classdict):
+        '''创建枚举类'''
+        __new__ = bases[0].__new__ if bases else object.__new__    #获取 Enum 类的 __new__ 方法
+
+        enum_class = super().__new__(cls, name, bases, classdict)    #提前创建枚举类
+        enum_class._member_names_  = []    #成员名称列表
+        enum_class._member_map_ = {}    #成员字典
+        enum_class._value2member_map_ = {}    #值到枚举项的映射
+
+        for member_name in classdict._member_names:    #遍历成员名称列表
+            #这里的 _member_names 是自定义命名空间 (_EnumDict) 的属性
+
+            #初始化枚举项
+            #这里实现了每个成员都有名称属性和值属性
+            value = classdict[member_name]    #枚举值
+            enum_member = cls.__call__(enum_class)    #创建枚举项
+            enum_member.name = member_name    #设置名称
+            enum_member.value = value    #设置枚举值
+            enum_class._value2member_map_[value] = enum_member    #设置值到枚举项的映射
+
+            for canonical_name, canonical_member in enum_class._member_map_.items():    #遍历已有的成员字典
+                #这里是为了实现当成员值相同时，第二个成员是第一个成员的别名
+                if canonical_member.value == enum_member.value:    #如果值相等
+                    #用之前的成员对象替换更改建立的成员对象
+                    enum_member = canonical_member    #重新赋值
+                    break    #跳出循环
+            else:    #当循环正常结束
+                #也就是没有重复
+                enum_class._member_names_.append(member_name)    #加入成员名称列表
+
+            enum_class._member_map_[member_name] = enum_member    #将成员名称和枚举项插入成员字典
+            setattr(enum_class, member_name, enum_member)    #通过注入的方式覆盖掉原来的值
+        
+        return enum_class    #返回已经创建并修改好了的枚举类
+    
+    def __call__(cls, *args, **kwargs):
+        '''返回现有成员，或创建新的枚举类。'''
+        if args or kwargs:    #如果有参数
+            return Enum.__new__(cls, *args, **kwargs)    #肯定是获取枚举成员
+            #因为创建成员没有参数
+        return object.__new__(cls)    #创建成员就祭出 object 大法
+
+    def __iter__(cls):
+        '''返回可迭代对象'''
+        #这里为了实现迭代的方式遍历成员
+        return (cls._member_map_[name] for name in cls._member_names_)
+
+    def __getitem__(cls, value):
+        #这里实现也了可以通过成员值来获取成员
+        if type(value) is cls:    #如果 value 是这个类的枚举项
+            return value    #直接返回值
+
+        # 尝试从 _value2member_map_ 获取, 查看它是否在反向映射中
+        try:
+            return cls._value2member_map_[value]    #尝试返回枚举项
+        except KeyError:
+            #找不到，不需要做长时间的 O(n) 搜索
+            pass
+        except TypeError:
+            # 从 _member_map_ 映射获取
+            for member in cls._member_map_.values():
+                if member.value == value:
+                    return member
+        
+        #执行到这一步来肯定是找不到了，报错
+        raise ValueError("%r is not a valid %s" % (value, cls.__name__))    #抛出异常
+
+class Enum(metaclass=EnumMeta):
+    '''枚举
+
+    从该类实例化以定义新枚举
+    
+    实现了以下特性:
+
+        * 成员名不允许重复
+        * 每个成员都有名称属性和值属性
+        * 当成员值相同时，第二个成员是第一个成员的别名
+        * 可以通过成员值来获取成员
+        * 迭代的方式遍历成员
+'''
+    def __new__(cls, value):
+        #所有枚举实例实际上都是在类构造期间创建的，
+        #而不调用此方法；此方法由元类调用
+
+        #这里实现了可以通过成员值来获取成员
+        if type(value) is cls:
+            return value
+
+        # 尝试从 _value2member_map_ 获取, 查看它是否在反向映射中
+        try:
+            return cls._value2member_map_[value]    #尝试返回枚举项
+        except KeyError:
+            #找不到，不需要做长时间的 O(n) 搜索
+            pass
+        except TypeError:
+            # 从 _member_map_ 映射获取
+            for member in cls._member_map_.values():
+                if member.value == value:
+                    return member
+        
+        #执行到这一步来肯定是找不到了，报错
+        raise ValueError("%r is not a valid %s" % (value, cls.__name__))    #抛出异常
+
+    def __str__(self):
+        #打印时调用
+        return '%s.%s' % (self.__class__.__name__, self.name)
+    
+    __repr__ = __str__    #都一样
+
+def unique(enum_class):
+    '''用于确保成员值唯一的枚举的类装饰器'''
+    #这里利用了当成员值相同时，第二个成员是第一个成员的别名和每个成员都有名称属性和值属性来判断值是否重复
+    duplicates = []    #初始化重复成员列表
+    for name, member in enum_class._member_map_.items():    #遍历枚举成员字典
+        if name != member.name:    #如果名字不相等
+            #那就是重复了
+            duplicates.append((name, member))    #加入重复成员列表
+    if duplicates:    #如果重复列表不为空
+        alias_details = ', '.join(    #拼接重复属性
+                ["%s -> %s" % (alias, name.name) for (alias, name) in duplicates])
+        raise ValueError('duplicate values found in %r: %s'%(enum_class.__name__, alias_details))    #报错
+    return enum_class    #如果没有重复则返回
+
+@unique
+class formula_enum(Enum):
+    #公式对应的类
+    正方形面积 = square_area
+    正方形周长 = square_perimeter
+    长方形面积 = rectangle_area
+    长方形周长 = rectangle_perimeter
+    三角形面积 = triangle_area
+    梯形面积 = trapezoid_area
+    平行四边形面积 = parallelogram_area
+    平行四边形周长 = parallelogram_perimeter
+    正方体表面积 = cube_surface_area
+    正方体体积 = cube_volume
+    正方体棱长总和 = sum_of_cube_edges
+    长方体表面积 = cuboid_surface_area
+    长方体体积 = cuboid_volume
+    长方体棱长总和 = sum_of_cuboid_edges
+    圆形周长 = circle_perimeter
+    圆形面积 = circle_area
+    营销号生成器 = Marketing
 
 def _builtin_formula_to_json(indent=4):
     """

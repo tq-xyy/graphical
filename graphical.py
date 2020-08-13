@@ -65,11 +65,9 @@ import ast  # 用于解析抽象语法树
 import fractions  # 用于分数支持
 import re  # 正则表达式
 import sys  # 系统调用
+from ctypes import cdll  # 用于加载dll
 from decimal import Decimal  # 精确的浮点数
 from json import dumps, loads  # json支持
-
-if sys.platform == 'win32':    #判断是否是Windows系统
-    from ctypes import WinDLL  # 用于加载dll
 
 FORMULA = None
 ARGS = None
@@ -206,7 +204,7 @@ def compute(equation,c_extend=True,**kwargs):
         dll_name = 'libgraphical.{bit}.dll'.format(bit=dll_bit_list[bit])
         try:
             #导入dll
-            dll = WinDLL('.\\' + dll_name)
+            dll = cdll.LoadLibrary('.\\' + dll_name)
         except FileNotFoundError:    #找不到会报错，捕获错误
             #就返回普通的计算
             import warnings   #给你个警告

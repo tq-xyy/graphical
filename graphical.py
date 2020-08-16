@@ -63,7 +63,8 @@ def loadfromJSON(json: str) -> type: ...
 import argparse  # 用于解析参数
 import ast  # 用于解析抽象语法树
 import fractions  # 用于分数支持
-import re  # 正则表达式
+import re
+from re import error  # 正则表达式
 import sys  # 系统调用
 from ctypes import cdll  # 用于加载dll
 from decimal import Decimal  # 精确的浮点数
@@ -241,6 +242,8 @@ class Graphical_metaclass(type):
             has_extension = True
         else:
             has_extension = False    #没有，设置has_extension为False
+            _extension = None    #这个也设置为 None
+            #不然 IDE 划红线不好看
         
         if isinstance(_args,dict):    #这么做是为了兼容json
             key_value = _args    #如果args已经是字典就不用转化了
@@ -270,7 +273,7 @@ class Graphical_metaclass(type):
                 _extension = temp
             else:    #不是，直接判断
                 if not isinstance(_extension,Extension):    #同上
-                    raise TypeError("\'%s\' not a extension object"%extend)
+                    raise TypeError("%r not a extension object"%_extension)
 
                 _extension = {_extension.get_name():_extension.get_function()}    #加入字典
             
@@ -866,11 +869,12 @@ class Graphical_str_compose(Graphical):
     
     def replace(self):
         self._formula = self.formula
+        key = None
         try:
             for key,value in self._args.items():    #迭代参数字典，将参数替换到公式里
                 self._formula = self._formula.replace(str(value),str(self.kwargs[key]))
-        except KeyError:    #如果引发KeyError,说明必要的参数没有传入
-            raise KeyError(key + " is not given")    #引发错误并详细说明
+        except KeyError as error:    #如果引发KeyError,说明必要的参数没有传入
+            raise KeyError(key + " is not given") from error    #引发错误并详细说明
         #这里再次引发错误是因为原本的错误说明不详细
     
     @_lazy_property   #惰性求值
@@ -1841,7 +1845,8 @@ def _tkinter_main():
 
             def callback(self=self):
                 """计算回调函数"""
-                formula = formula_enum[self.formula.get()].value    #获取对应的函数
+                value = self.formula.get()
+                formula = formula_enum(value).value    #获取对应的函数
                 compute_args = self.args.get().split(' ')
                 if len(compute_args) % 2 != 0:    #如果参数的个数不是2的倍数
                     raise TypeError("参数错误")    #引发错误
